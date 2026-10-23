@@ -23,6 +23,8 @@ jobs:
         run: test "$(docker run --rm open-web-llm-api:ci id -u)" = 65532
   container-lifecycle:
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
     defaults:
       run:
         working-directory: api
