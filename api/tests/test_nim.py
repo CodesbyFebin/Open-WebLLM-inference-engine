@@ -25,6 +25,30 @@ def test_authentication_and_request_validation():
         assert client.post("/api/nim/complete", headers=AUTH,
                            json={"prompt": "hi", "max_tokens": 49}).status_code == 422
 
+def test_authenticated_nim_api_route_uses_bounded_adapter(monkeypatch):
+    monkeypatch.setenv("NIM_ENABLED", "true")
+    monkeypatch.setenv("NIM_FREE_QUOTA_ACK", "I CONFIRM FREE ONLY")
+    monkeypatch.setenv("NVIDIA_API_KEY", "test-key-not-real")
+    monkeypatch.setenv("NIM_MAX_REQUESTS", "1")
+    monkeypatch.setattr(nim, "_request_count", 0)
+
+    class MockClient:
+        async def post(self, url, **kwargs):
+            return httpx.Response(200, json={
+                "choices": [{"message": {"content": "NIM answer"}}],
+                "usage": {"completion_tokens": 2},
+            }, request=httpx.Request("POST", url))
+
+    with TestClient(app) as client:
+        app.state.http = MockClient()
+        response = client.post("/api/nim/complete", headers=AUTH,
+                               json={"prompt": "hello", "max_tokens": 8})
+        assert response.status_code == 200
+        assert response.json()["backend"] == "nvidia-nim"
+        assert response.json()["content"] == "NIM answer"
+        assert response.json()["completion_tokens"] == 2
+    monkeypatch.setattr(nim, "_request_count", 0)
+
 def test_approved_bounded_request_and_exhaustion(monkeypatch):
     asyncio.run(_approved_bounded_request_and_exhaustion(monkeypatch))
 

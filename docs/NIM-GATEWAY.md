@@ -6,6 +6,8 @@ The gateway exposes two **authenticated** routes:
 - `GET /api/nim/status`: configuration and in-process remaining request slots (never returns the key).
 - `POST /api/nim/complete`: single non-streaming chat request using the pinned `nvidia/nemotron-3.5-lightning-30b-a3b` model.
 
+The web console exposes this adapter as `Nemotron 3.5 Lightning 30B · NVIDIA NIM`. The console polls the authenticated status route and enables submission only when the adapter is enabled and has remaining process-local slots. Browser inference remains a separate local WebGPU path using Transformers.js and q4f16 weights; choosing NVIDIA NIM sends the prompt to NVIDIA instead. The NIM route is non-streaming, so the console does not report NIM TTFT.
+
 The adapter defaults to **disabled**. The GitHub Actions `NVIDIA_API_KEY` secret is available only inside GitHub Actions and is **not** automatically injected into deployed servers. To opt in for a trusted private staging process, configure:
 
 ```dotenv
