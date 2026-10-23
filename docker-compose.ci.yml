@@ -1,0 +1,85 @@
+# Disposable integration stack. The model endpoint returns fixed test output and
+# does not call a hosted model, NVIDIA NIM, or any other billable service.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ci-admin-password-not-a-secret
+      POSTGRES_DB: inference
+      HELLO_MIGRATOR_PASSWORD: ci-migrator-password-not-a-secret-000000
+      HELLO_APP_PASSWORD: ci-app-password-not-a-secret-000000000000000
+      HELLO_WORKER_PASSWORD: ci-worker-password-not-a-secret-0000000000000
+    volumes:
+      - ci-postgres:/var/lib/postgresql/data
+      - ./infra/postgres/10-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    ports: ['127.0.0.1:55432:5432']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d inference']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  mock-model:
+    image: python:3.12-slim
+    command: ['python', '/mock/model.py']
+    volumes:
+      - ./api/tests/mock_model_server.py:/mock/model.py:ro
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+  migrate:
+    build: ./api
+    command: ['python', '-m', 'app.migrate']
+    environment:
+      MIGRATION_DATABASE_URL: postgresql://hello_migrator:ci-migrator-password-not-a-secret-000000@postgres:5432/inference
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+  gateway:
+    build: ./api
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql://hello_app:ci-app-password-not-a-secret-000000000000000@postgres:5432/inference
+      AUTH_THROTTLE_PEPPER: ci-auth-throttle-pepper-not-a-secret-000000000000000000000
+      VLLM_URL: http://mock-model:8000
+      VLLM_MODEL: ci-fixture-model
+      BENCHMARK_DB: /tmp/inference-benchmarks.sqlite3
+    ports: ['127.0.0.1:18080:8080']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mock-model:
+        condition: service_healthy
+    read_only: true
+    tmpfs: ['/tmp:rw,noexec,nosuid,nodev,size=32m']
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/ready', timeout=3)"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+  worker:
+    build: ./api
+    command: ['python', '-m', 'app.worker']
+    environment:
+      WORKER_DATABASE_URL: postgresql://hello_worker:ci-worker-password-not-a-secret-0000000000000@postgres:5432/inference
+      VLLM_URL: http://mock-model:8000
+      VLLM_MODEL: ci-fixture-model
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mock-model:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ['/tmp:rw,noexec,nosuid,nodev,size=16m']
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    pids_limit: 64
+    mem_limit: 512m
+volumes:
+  ci-postgres:
