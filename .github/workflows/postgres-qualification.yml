@@ -1,0 +1,43 @@
+name: PostgreSQL isolation and recovery qualification
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  disposable-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test-only-password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGPASSWORD: test-only-password
+      PGHOST: localhost
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client tooling
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Apply transactional migration
+        run: psql -U postgres -v ON_ERROR_STOP=1 -f api/migrations/001_control_plane.sql
+      - name: Verify RLS between two tenants
+        run: psql -U postgres -v ON_ERROR_STOP=1 -f api/tests/postgres_rls.sql
+      - name: Test 20 concurrent quota reservations
+        run: python3 api/tests/postgres_concurrency.py
+      - name: Restore backup to disposable isolated database
+        run: |
+          pg_dump -U postgres -Fc -f /tmp/openwebllm-fixture.dump postgres
+          createdb -U postgres recovery_fixture
+          pg_restore -U postgres -d recovery_fixture --no-owner --no-acl /tmp/openwebllm-fixture.dump
+          test "$(psql -U postgres -d recovery_fixture -At -c 'SELECT count(*) FROM control.tenants')" = "2"
+          test "$(psql -U postgres -d recovery_fixture -At -c 'SELECT requests_used FROM control.quotas')" = "5"
+          echo "PASS: backup restored with two tenants and exact quota state"
