@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from .routing import Backend, RouteOptions, decide
 from .registry import registry
+from .benchmarks import DEFAULT_CASES, configured_backends, measure, qualified, save_run
 
 VLLM_URL = os.getenv('VLLM_URL', 'http://vllm:8000').rstrip('/')
 VLLM_MODEL = os.getenv('VLLM_MODEL', 'Qwen/Qwen2.5-7B-Instruct')
@@ -55,18 +56,65 @@ class RouteRequest(BaseModel):
 @app.post('/api/route')
 async def route(req: RouteRequest, authorization: str | None = Header(default=None)):
     authorize(authorization)
+    candidates = configured_backends()
+    path = os.getenv('BENCHMARK_DB', '/tmp/inference-benchmarks.sqlite3')
+    verified = {backend: q for backend, _, model, _ in candidates
+                if (q := qualified(path, backend, model)) is not None}
     try:
         target, reason = decide(req.prompt, RouteOptions(
             privacy=req.privacy, quality=req.quality, preferred=req.preferred,
-            browser_available=req.browser_available,
-            edge_available=bool(os.getenv('EDGE_URL')),
-            gpu_available=bool(os.getenv('VLLM_URL'))))
+            browser_available=req.browser_available if req.preferred != 'auto' else False,
+            edge_available=('edge' in verified) if req.preferred == 'auto' else bool(os.getenv('EDGE_URL')),
+            gpu_available=('gpu' in verified) if req.preferred == 'auto' else bool(os.getenv('VLLM_URL'))))
     except ValueError as exc:
-        raise HTTPException(422, str(exc)) from exc
+        raise HTTPException(503 if req.preferred == 'auto' else 422, str(exc)) from exc
+    if req.preferred == 'auto' and req.privacy != 'sensitive' and req.quality != 'accurate' and len(verified) > 1:
+        winner = min(verified.values(), key=lambda q: q['medianDurationMs'])
+        target = Backend(winner['backend'])
+        reason = 'Fastest qualified backend by median measured duration'
+    qualification = None
+    if target in (Backend.GPU, Backend.EDGE) and req.preferred == 'auto':
+        candidate = next((item for item in candidates if item[0] == target.value), None)
+        if not candidate:
+            raise HTTPException(503, 'Selected runtime has no configured adapter')
+        qualification = verified.get(target.value)
+        if not qualification:
+            raise HTTPException(503, 'Runtime has no fresh passing benchmark evidence; automatic routing disabled')
     return {'backend': target.value, 'reason': reason,
             'executeInBrowser': target == Backend.BROWSER,
             'apiEndpoint': '/api/infer' if target == Backend.GPU else None,
+            'qualification': qualification,
             'note': 'Routing decision only; no inference or model download occurred'}
+
+class BenchmarkRequest(BaseModel):
+    backend: str
+    repetitions: int = Field(default=1, ge=1, le=3)
+
+@app.post('/api/benchmarks/run')
+async def run_benchmarks(req: BenchmarkRequest, authorization: str | None = Header(default=None)):
+    authorize(authorization)
+    candidate = next((item for item in configured_backends() if item[0] == req.backend), None)
+    if candidate is None:
+        raise HTTPException(422, 'Backend not configured or not eligible for this text benchmark')
+    backend, url, model, secret = candidate
+    # This endpoint intentionally executes real model requests and can incur GPU cost.
+    path = os.getenv('BENCHMARK_DB', '/tmp/inference-benchmarks.sqlite3')
+    results = []
+    for _ in range(req.repetitions):
+        for prompt_id, prompt in DEFAULT_CASES:
+            row = await measure(app.state.http, url, model, prompt, backend, prompt_id, secret)
+            save_run(path, row)
+            results.append(row)
+    return {'results': results, 'qualification': qualified(path, backend, model)}
+
+@app.get('/api/benchmarks/status')
+async def benchmark_status(authorization: str | None = Header(default=None)):
+    authorize(authorization)
+    path = os.getenv('BENCHMARK_DB', '/tmp/inference-benchmarks.sqlite3')
+    return {'backends': [{'backend': backend, 'model': model,
+                          'qualification': qualified(path, backend, model)}
+                         for backend, _, model, _ in configured_backends()],
+            'browser': {'qualification': None, 'reason': 'Browser measurements are not server-attested'}}
 
 @app.post('/api/infer')
 async def infer(req: InferRequest, authorization: str | None = Header(default=None)):

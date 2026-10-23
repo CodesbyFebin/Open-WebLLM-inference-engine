@@ -15,6 +15,21 @@ This repository begins with a working-source foundation: React/TypeScript WebGPU
 | ComfyUI | Image graph workflows | Planned workflow adapter |
 | MNN / Cactus | Native mobile | Planned SDK bindings |
 
+## Evidence-gated benchmarks
+
+The gateway implements a real streaming benchmark protocol for configured OpenAI-compatible GPU and edge services. It records evidence in SQLite (`BENCHMARK_DB`) and refuses **automatic** server routing unless the latest three results cover distinct simple, reasoning, and code prompts, all contain model-generated text, and include provider-reported completion token counts. Results expire after 24 hours. This is a **performance/compatibility smoke gate**, not an accuracy certification.
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/benchmarks/run \
+  -H 'Authorization: Bearer YOUR_SECRET' -H 'Content-Type: application/json' \
+  -d '{"backend":"gpu","repetitions":1}'
+curl -H 'Authorization: Bearer YOUR_SECRET' http://127.0.0.1:8080/api/benchmarks/status
+```
+
+Running a benchmark submits real model requests and can incur GPU cost. It is never triggered automatically by web-page visits. The browser UI offers a separate measured browser benchmark; browser results cannot be attested by this gateway and are excluded from automatic server routing until a trusted device-verification flow exists.
+
+`EDGE_URL`, `EDGE_MODEL`, and `EDGE_API_KEY` configure a private OpenAI-compatible edge service. All URLs are operator-configured environment variables, not supplied by untrusted inference callers.
+
 All upstream projects remain independent, subject to their own licenses. The project does not vendor or claim ownership of their source code. Benchmarks such as latency, tokens/second, and GPU memory must come from actual runs.
 
 ## Architecture

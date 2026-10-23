@@ -12,6 +12,22 @@ All engines are external dependencies, not vendored code. The gateway registry d
 | Cactus | Runtime-specific mobile weights | Mobile/edge | Not implemented |
 | CTranslate2 | CTranslate2 converted models | CPU/GPU | Not implemented |
 
+## Upstream sourcing and licensing
+
+Use adapters against upstream runtimes, not a bulk copy of unrelated source trees. Checked repository metadata on 2026-10-23:
+
+| Upstream | Repository license | Decision |
+| --- | --- | --- |
+| vllm-project/vllm | Apache-2.0 | External GPU service |
+| mlc-ai/web-llm | Apache-2.0 | Separate browser runtime planned |
+| Comfy-Org/ComfyUI | GPL-3.0 | External workflow service; do not blend source into this gateway |
+| alibaba/MNN | Apache-2.0 | Native mobile adapter planned |
+| cactus-compute/cactus | Not asserted in API metadata | Review license before reuse |
+| OpenNMT/CTranslate2 | MIT | Separate native adapter planned |
+| google/gemma.cpp | Apache-2.0 | Model-specific local engine reference |
+| NVIDIA/TransformerEngine | Apache-2.0 | CUDA library, not an inference API |
+| Michael-A-Kuykendall/shimmy | Apache-2.0 | OpenAI-compatible local service candidate |
+
 ## Integration rules
 
 1. Keep task-specific APIs distinct. Do not route diffusion workflow payloads to a text completions endpoint.
