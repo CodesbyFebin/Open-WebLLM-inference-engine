@@ -55,6 +55,8 @@ CREATE INDEX IF NOT EXISTS idx_jobs_ready ON control.jobs(state,leased_until);
 REVOKE ALL ON SCHEMA control FROM PUBLIC;
 GRANT USAGE ON SCHEMA control TO openwebllm_app;
 GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA control TO openwebllm_app;
+-- Audit records must not be edited or deleted by runtime identities.
+REVOKE UPDATE,DELETE ON control.audit_events FROM openwebllm_app;
 GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA control TO openwebllm_app;
 -- Tenant identity MUST be bound by a trusted application after validating a session.
 -- Never expose arbitrary SQL or tenant-context setters to untrusted clients.
