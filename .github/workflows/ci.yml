@@ -5,6 +5,76 @@ on:
 permissions:
   contents: read
 jobs:
+  container-policy:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_ADMIN_PASSWORD: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      HELLO_MIGRATOR_PASSWORD: 1123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      HELLO_APP_PASSWORD: 2123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      HELLO_WORKER_PASSWORD: 3123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      AUTH_THROTTLE_PEPPER: 4123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate local stack configuration without starting inference
+        run: docker compose config --quiet
+      - name: Build the non-root API and worker image
+        run: docker build --tag open-web-llm-api:ci ./api
+      - name: Check the application image uses its unprivileged UID
+        run: test "$(docker run --rm open-web-llm-api:ci id -u)" = 65532
+  postgres-security:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: inference_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d inference_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://hello_app:app-test-password@127.0.0.1:5432/inference_test
+      MIGRATION_DATABASE_URL: postgresql://hello_migrator:migrate-test-password@127.0.0.1:5432/inference_test
+      WORKER_DATABASE_URL: postgresql://hello_worker:worker-test-password@127.0.0.1:5432/inference_test
+      VLLM_URL: http://vllm.invalid
+      NIM_ENABLED: 'false'
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - name: Create separate disposable migration and application roles
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d inference_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE hello_migrator LOGIN PASSWORD 'migrate-test-password';
+          CREATE ROLE hello_app LOGIN PASSWORD 'app-test-password';
+          CREATE ROLE hello_worker LOGIN PASSWORD 'worker-test-password';
+          GRANT CONNECT ON DATABASE inference_test TO hello_migrator, hello_app, hello_worker;
+          GRANT USAGE, CREATE ON SCHEMA public TO hello_migrator;
+          SQL
+      - name: Apply migrations using privileged one-shot role
+        run: python -m app.migrate
+      - name: Run database-backed sessions, RBAC, RLS, quota, and audit gates
+        run: python -m pytest -q tests/test_postgres.py
+      - name: Verify a disposable backup can be restored
+        env:
+          PGPASSWORD: postgres
+        run: |
+          pg_dump -h 127.0.0.1 -U postgres -d inference_test -Fc -f "$RUNNER_TEMP/inference_test.dump"
+          createdb -h 127.0.0.1 -U postgres inference_restore
+          pg_restore --no-owner --role=postgres -h 127.0.0.1 -U postgres -d inference_restore "$RUNNER_TEMP/inference_test.dump"
+          test "$(psql -h 127.0.0.1 -U postgres -d inference_restore -Atc 'SELECT count(*) FROM schema_migrations')" -ge 1
   api:
     runs-on: ubuntu-latest
     defaults:

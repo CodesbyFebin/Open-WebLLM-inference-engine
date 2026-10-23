@@ -75,18 +75,15 @@ The browser worker loads actual q4f16 ONNX weights via Transformers.js and strea
 
 ## GPU with Docker
 
-Requires NVIDIA Container Toolkit and enough VRAM for Qwen2.5-7B. Configure `.env`:
-
-```dotenv
-API_KEY=replace-with-random-long-secret
-```
+The complete Compose stack includes PostgreSQL, a one-shot migration service, the authenticated gateway, a restricted durable worker, and vLLM. It requires Docker Compose, NVIDIA Container Toolkit, and enough VRAM for Qwen2.5-7B. Generate separate secrets (`openssl rand -hex 32`) for the four passwords and auth throttle pepper in `.env.example`, then:
 
 ```bash
-docker compose up --build
-curl -H 'Authorization: Bearer replace-with-random-long-secret' http://127.0.0.1:8080/api/cache/status
+cp .env.example .env
+docker compose up --build -d
+docker compose run --rm -it bootstrap
 ```
 
-The gateway listens only on localhost. Do not expose vLLM to the internet. Configure a local reverse proxy for the web UI when accessing the GPU endpoint (Vite dev server proxy or production same-origin reverse proxy). Cross-origin direct requests are intentionally not enabled by default.
+The bootstrap command prompts securely for the first tenant and owner. Start the web app separately with `cd web && npm install && npm run dev`, sign in with that account, and use the session for gateway calls. The gateway binds to localhost. Do not expose vLLM or PostgreSQL publicly; configure a TLS reverse proxy before remote access. Starting vLLM uses local GPU resources. Hosted NVIDIA NIM remains a separately gated, explicitly selected API path.
 
 ## GPU on GKE
 
@@ -107,8 +104,12 @@ Build and push the gateway image to a private registry; replace the manifest ima
 - `GET /api/metrics`: gateway Prometheus text format.
 - `GET /api/models`: configured GPU model.
 - `GET /health`: gateway liveness only.
+- `POST /api/auth/session`, `GET /api/auth/me`, and `DELETE /api/auth/session`: database-backed user sessions when PostgreSQL is configured.
+- `POST /api/admin/users`: owner/admin user provisioning with tenant-scoped roles.
+- `GET /api/usage` and admin-only `GET /api/audit`: current tenant usage and tenant-scoped audit events.
+- `POST /api/jobs`, `GET /api/jobs/{job_id}`, and `DELETE /api/jobs/{job_id}`: durable, bounded inference queue with lease recovery; workers only call the configured vLLM API and never execute submitted text as code.
 
-All `/api/*` routes require an `Authorization: Bearer ...` header matching `API_KEY`. The UI holds the token in ephemeral memory; do not give an untrusted multi-user frontend a shared production secret. Implement identity-aware session authentication before exposing this as a hosted service.
+In local no-database mode, `/api/*` uses the configured `API_KEY` as a single machine identity. With `DATABASE_URL`, user sessions are resolved per account and the shared key is disabled unless `ALLOW_MACHINE_API_KEY=true` is explicitly enabled. Production mode requires PostgreSQL. Follow [PostgreSQL identity and tenant security](docs/POSTGRES-SECURITY.md) to apply migrations, bootstrap an owner, and configure separate migration and application roles. Do not expose the local shared-key mode as a multi-user hosted service.
 
 ## Tests
 
@@ -123,6 +124,8 @@ npm run build
 ```
 
 The browser unit test verifies exact 16-unit full-block matching. A live GPU prefix-cache integration test and GPU performance benchmark still require deployed NVIDIA hardware. Compare repeated 32+ model-token prompts against real vLLM exported hit/miss counters; aggregate metrics do not prove the ownership of any particular physical block.
+
+GitHub Actions also runs a disposable PostgreSQL 16 security job with separate migration/application/worker roles, session expiry/revocation and login throttling, RBAC, tenant RLS isolation, concurrent quota reservations, job lease recovery, audit verification, and backup/restore smoke testing. It checks the app/worker container policy and exercises concurrent API requests against a provider-free transport. These are implementation gates, not production load tests or provider/device validation.
 
 ## Known gaps
 
