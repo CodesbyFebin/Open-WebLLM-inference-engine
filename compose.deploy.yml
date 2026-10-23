@@ -68,7 +68,7 @@ services:
     restart: unless-stopped
     environment:
       WORKER_DATABASE_URL: postgresql://hello_worker:${HELLO_WORKER_PASSWORD:?required}@postgres:5432/inference
-      VLLM_URL: ${INFERENCE_URL:?worker profile requires an operator-controlled inference endpoint}
+      VLLM_URL: ${INFERENCE_URL:-http://unconfigured.invalid}
       VLLM_MODEL: ${INFERENCE_MODEL:-Qwen/Qwen2.5-7B-Instruct}
     depends_on:
       migrate:
