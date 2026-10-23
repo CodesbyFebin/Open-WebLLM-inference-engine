@@ -1,14 +1,94 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?set a random database admin password}
+      POSTGRES_DB: inference
+      HELLO_MIGRATOR_PASSWORD: ${HELLO_MIGRATOR_PASSWORD:?set a separate migration password}
+      HELLO_APP_PASSWORD: ${HELLO_APP_PASSWORD:?set a separate app password}
+      HELLO_WORKER_PASSWORD: ${HELLO_WORKER_PASSWORD:?set a separate worker password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/10-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d inference']
+      interval: 5s
+      timeout: 5s
+      retries: 20
   gateway:
     build: ./api
     environment:
-      API_KEY: ${API_KEY:?set API_KEY}
+      APP_ENV: production
+      DATABASE_URL: postgresql://hello_app:${HELLO_APP_PASSWORD:?set HELLO_APP_PASSWORD}@postgres:5432/inference
+      AUTH_THROTTLE_PEPPER: ${AUTH_THROTTLE_PEPPER:?set a random auth throttle pepper}
       VLLM_URL: http://vllm:8000
       BENCHMARK_DB: /data/inference-benchmarks.sqlite3
     volumes:
       - benchmarks:/data
     ports: ['127.0.0.1:8080:8080']
-    depends_on: [vllm]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      vllm:
+        condition: service_healthy
+    read_only: true
+    tmpfs: ['/tmp:rw,noexec,nosuid,nodev,size=32m']
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/ready', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+  migrate:
+    build: ./api
+    command: ['python', '-m', 'app.migrate']
+    environment:
+      MIGRATION_DATABASE_URL: postgresql://hello_migrator:${HELLO_MIGRATOR_PASSWORD:?set HELLO_MIGRATOR_PASSWORD}@postgres:5432/inference
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+    read_only: true
+    tmpfs: ['/tmp:rw,noexec,nosuid,nodev,size=16m']
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+  bootstrap:
+    profiles: ['setup']
+    build: ./api
+    command: ['python', '-m', 'app.bootstrap']
+    environment:
+      MIGRATION_DATABASE_URL: postgresql://hello_migrator:${HELLO_MIGRATOR_PASSWORD:?set HELLO_MIGRATOR_PASSWORD}@postgres:5432/inference
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    stdin_open: true
+    tty: true
+    restart: 'no'
+    read_only: true
+    tmpfs: ['/tmp:rw,noexec,nosuid,nodev,size=16m']
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+  worker:
+    build: ./api
+    command: ['python', '-m', 'app.worker']
+    environment:
+      WORKER_DATABASE_URL: postgresql://hello_worker:${HELLO_WORKER_PASSWORD:?set HELLO_WORKER_PASSWORD}@postgres:5432/inference
+      VLLM_URL: http://vllm:8000
+      VLLM_MODEL: Qwen/Qwen2.5-7B-Instruct
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      vllm:
+        condition: service_healthy
+    restart: unless-stopped
+    read_only: true
+    tmpfs: ['/tmp:rw,noexec,nosuid,nodev,size=16m']
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    pids_limit: 64
+    mem_limit: 1g
   vllm:
     image: vllm/vllm-openai:v0.11.2
     command: ['--model', 'Qwen/Qwen2.5-7B-Instruct', '--enable-prefix-caching', '--block-size', '16', '--gpu-memory-utilization', '0.85', '--max-model-len', '8192']
@@ -16,6 +96,13 @@ services:
     gpus: all
     volumes: ['hf-cache:/root/.cache/huggingface']
     expose: ['8000']
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 3m
 volumes:
-  hf-cache:
+  postgres-data:
   benchmarks:
+  hf-cache:
