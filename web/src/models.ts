@@ -1,10 +1,11 @@
-export type Checkpoint = {name:string; repo:string; sizeMB:number; kvHeads:number; contextWindow:number; backend:'wasm'|'gpu'; format:'q4f16'|'bf16'};
+export type Checkpoint = {name:string; repo:string; sizeMB:number; kvHeads:number; contextWindow:number; backend:'wasm'|'gpu'|'nim'; format:'q4f16'|'bf16'};
 export const models:Checkpoint[] = [
   {name:'SmolLM2-135M-Instruct',repo:'onnx-community/SmolLM2-135M-Instruct-ONNX',sizeMB:118,kvHeads:3,contextWindow:8192,backend:'wasm',format:'q4f16'},
   {name:'SmolLM2-360M-Instruct',repo:'onnx-community/SmolLM2-360M-Instruct-ONNX',sizeMB:273,kvHeads:5,contextWindow:8192,backend:'wasm',format:'q4f16'},
   {name:'SmolLM-135M-Instruct',repo:'onnx-community/SmolLM-135M-Instruct-ONNX',sizeMB:117,kvHeads:3,contextWindow:2048,backend:'wasm',format:'q4f16'},
   {name:'Qwen2.5-0.5B-Instruct',repo:'onnx-community/Qwen2.5-0.5B-Instruct',sizeMB:483,kvHeads:2,contextWindow:32768,backend:'wasm',format:'q4f16'},
-  {name:'Qwen2.5-7B-Instruct · GPU',repo:'Qwen/Qwen2.5-7B-Instruct',sizeMB:15000,kvHeads:4,contextWindow:32768,backend:'gpu',format:'bf16'}
+  {name:'Qwen2.5-7B-Instruct · vLLM GPU',repo:'Qwen/Qwen2.5-7B-Instruct',sizeMB:15000,kvHeads:4,contextWindow:32768,backend:'gpu',format:'bf16'},
+  {name:'Nemotron 3.5 Lightning 30B · NVIDIA NIM',repo:'nvidia/nemotron-3.5-lightning-30b-a3b',sizeMB:0,kvHeads:0,contextWindow:2000,backend:'nim',format:'bf16'}
 ];
 export const BLOCK_SIZE=16;
 export function blockTable(tokens:string[], previous:string[]=[]){
