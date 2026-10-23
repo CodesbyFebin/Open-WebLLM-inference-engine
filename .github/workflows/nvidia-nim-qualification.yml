@@ -1,0 +1,44 @@
+name: NVIDIA NIM free-quota qualification
+on:
+  workflow_dispatch:
+    inputs:
+      free_quota_ack:
+        description: 'Confirm this model is free for your NVIDIA account: type I CONFIRM FREE ONLY'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: nim-free-qualification
+  cancel-in-progress: false
+jobs:
+  bounded-nim-smoke:
+    if: ${{ inputs.free_quota_ack == 'I CONFIRM FREE ONLY' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fail closed without a configured secret
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          if [ -z "$NVIDIA_API_KEY" ]; then
+            echo "::error::Repository secret NVIDIA_API_KEY is unavailable."
+            exit 1
+          fi
+      - name: Run exactly three capped NVIDIA NIM requests
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          NIM_FREE_QUOTA_ACK: ${{ inputs.free_quota_ack }}
+        run: python scripts/qualify_nvidia_nim.py
+      - name: Upload non-sensitive measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvidia-nim-qualification
+          path: nim-qualification.json
+          if-no-files-found: ignore
+          retention-days: 7
