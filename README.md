@@ -4,6 +4,10 @@
 
 This repository begins with a working-source foundation: React/TypeScript WebGPU inference console, FastAPI gateway, authenticated routing and vLLM deployment manifests. Runtime integrations have individually declared states, and unfinished adapters are not advertised as runnable.
 
+## Studied techniques
+
+`docs/upstream-skills/TECHNIQUES.md` merges notes from browser WebGPU, worker, and on-device model repositories. The notes are not vendored runtimes. WebLLM remains a planned separate adapter. Unlicensed upstream trees were not copied.
+
 ## Runtime support matrix
 
 | Runtime | Use | State |

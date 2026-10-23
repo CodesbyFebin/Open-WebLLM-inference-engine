@@ -1,0 +1,54 @@
+# Sources
+
+Shallow-cloned 2026-10-23. Licensed READMEs and LICENSE files are under `notes/`. Repositories with no license file in the clone are listed as links only and were not copied.
+
+- [GoogleChromeLabs/chrome-for-testing](https://github.com/GoogleChromeLabs/chrome-for-testing) — notes copied
+- [GoogleChromeLabs/chromedriver-log-viewer](https://github.com/GoogleChromeLabs/chromedriver-log-viewer) — notes copied
+- [GoogleChromeLabs/chromeos_smart_card_connector](https://github.com/GoogleChromeLabs/chromeos_smart_card_connector) — notes copied
+- [GoogleChromeLabs/chromium-bidi](https://github.com/GoogleChromeLabs/chromium-bidi) — notes copied
+- [GoogleChromeLabs/clooney](https://github.com/GoogleChromeLabs/clooney) — notes copied
+- [GoogleChromeLabs/codelabs](https://github.com/GoogleChromeLabs/codelabs) — notes copied
+- [GoogleChromeLabs/comlink](https://github.com/GoogleChromeLabs/comlink) — notes copied
+- [GoogleChromeLabs/cssomnom](https://github.com/GoogleChromeLabs/cssomnom) — notes copied
+- [GoogleChromeLabs/jsvu](https://github.com/GoogleChromeLabs/jsvu) — notes copied
+- [GoogleChromeLabs/modern-web-guidance-demos](https://github.com/GoogleChromeLabs/modern-web-guidance-demos) — notes copied
+- [GoogleChromeLabs/passkey-skills-demo](https://github.com/GoogleChromeLabs/passkey-skills-demo) — notes copied
+- [GoogleChromeLabs/paymentrequest-show](https://github.com/GoogleChromeLabs/paymentrequest-show) — notes copied
+- [GoogleChromeLabs/private-state-token-demo](https://github.com/GoogleChromeLabs/private-state-token-demo) — notes copied
+- [GoogleChromeLabs/project-sesame](https://github.com/GoogleChromeLabs/project-sesame) — notes copied
+- [GoogleChromeLabs/protected-audience-demo](https://github.com/GoogleChromeLabs/protected-audience-demo) — notes copied
+- [GoogleChromeLabs/rowing-monitor](https://github.com/GoogleChromeLabs/rowing-monitor) — notes copied
+- [GoogleChromeLabs/serial-terminal](https://github.com/GoogleChromeLabs/serial-terminal) — notes copied
+- [GoogleChromeLabs/shared-storage-demo](https://github.com/GoogleChromeLabs/shared-storage-demo) — notes copied
+- [GoogleChromeLabs/squoosh](https://github.com/GoogleChromeLabs/squoosh) — notes copied
+- [GoogleChromeLabs/telnet-client](https://github.com/GoogleChromeLabs/telnet-client) — notes copied
+- [GoogleChromeLabs/use-webmcp-tool](https://github.com/GoogleChromeLabs/use-webmcp-tool) — notes copied
+- [GoogleChromeLabs/wasm-feature-detect](https://github.com/GoogleChromeLabs/wasm-feature-detect) — notes copied
+- [GoogleChromeLabs/web-ai-demos](https://github.com/GoogleChromeLabs/web-ai-demos) — notes copied
+- [GoogleChromeLabs/web-audio-samples](https://github.com/GoogleChromeLabs/web-audio-samples) — notes copied
+- [GoogleChromeLabs/web-based-payment-app-example](https://github.com/GoogleChromeLabs/web-based-payment-app-example) — notes copied
+- [GoogleChromeLabs/web-perf-demos](https://github.com/GoogleChromeLabs/web-perf-demos) — notes copied
+- [GoogleChromeLabs/webbundle-plugins](https://github.com/GoogleChromeLabs/webbundle-plugins) — notes copied
+- [GoogleChromeLabs/webdriver-bidi-protocol](https://github.com/GoogleChromeLabs/webdriver-bidi-protocol) — notes copied
+- [GoogleChromeLabs/webmcp-extension](https://github.com/GoogleChromeLabs/webmcp-extension) — notes copied
+- [GoogleChromeLabs/webmcp-tools](https://github.com/GoogleChromeLabs/webmcp-tools) — notes copied
+- [NativeMindBrowser/NativeMindExtension](https://github.com/NativeMindBrowser/NativeMindExtension) — notes copied
+- [RunanywhereAI/on-device-browser-agent](https://github.com/RunanywhereAI/on-device-browser-agent) — notes copied
+- [Ryan-yang125/ChatLLM-Web](https://github.com/Ryan-yang125/ChatLLM-Web) — notes copied
+- [Scthe/nanite-webgpu](https://github.com/Scthe/nanite-webgpu) — notes copied
+- [YuriCrystal/ai-avatar-bot](https://github.com/YuriCrystal/ai-avatar-bot) — notes copied
+- [activated-intelligence/voice-chat](https://github.com/activated-intelligence/voice-chat) — notes copied
+- [cfahlgren1/webllm-playground](https://github.com/cfahlgren1/webllm-playground) — link only, no LICENSE in clone
+- [dgreenheck/webgpu-claude-skill](https://github.com/dgreenheck/webgpu-claude-skill) — link only, no LICENSE in clone
+- [hamzaydia/verifyfetch](https://github.com/hamzaydia/verifyfetch) — notes copied
+- [hooosberg/WitNote](https://github.com/hooosberg/WitNote) — link only, no LICENSE in clone
+- [jakobhoeg/browser-ai](https://github.com/jakobhoeg/browser-ai) — notes copied
+- [mikbry/awesome-webgpu](https://github.com/mikbry/awesome-webgpu) — link only, no LICENSE in clone
+- [neuroprod/webgpu](https://github.com/neuroprod/webgpu) — link only, no LICENSE in clone
+- [playcanvas/engine](https://github.com/playcanvas/engine) — notes copied
+- [pygfx/wgpu-py](https://github.com/pygfx/wgpu-py) — notes copied
+- [ranuts/document](https://github.com/ranuts/document) — notes copied
+- [wcandillon/react-native-webgpu](https://github.com/wcandillon/react-native-webgpu) — notes copied
+- [webgpu-native/webgpu-headers](https://github.com/webgpu-native/webgpu-headers) — notes copied
+- [webgpu/webgpu-samples](https://github.com/webgpu/webgpu-samples) — notes copied
+- [webgpu/webgpufundamentals](https://github.com/webgpu/webgpufundamentals) — notes copied

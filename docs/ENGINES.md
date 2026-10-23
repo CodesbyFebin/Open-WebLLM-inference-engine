@@ -45,3 +45,7 @@ Use adapters against upstream runtimes, not a bulk copy of unrelated source tree
 - Local runtime discovery for OpenAI-compatible endpoints with sandboxed network policy.
 - Mobile bridge with native Android smoke tests for MNN/Cactus.
 - Prometheus GPU metrics, queue depth, p50/p95 TTFT and abort propagation.
+
+## Studied, not integrated (2026-10-23)
+
+`docs/upstream-skills/` records techniques from 50 shallow clones (WebGPU device loss, WASM feature detection, VerifyFetch-style resumable hashed downloads, Comlink worker RPC, separate Transformers.js vs WebLLM artifacts, and page-local WebMCP tools). Licensed notes are copied. Unlicensed repositories are links only. None of these techniques are adapters. Do not mark WebLLM, ComfyUI, or a browser worker pool as implemented because the notes exist.

@@ -1,0 +1,211 @@
+<!--
+Copyright 2025 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+# Project Sesame
+
+Project Sesame is an open-source demo web application built with Node.js,
+designed to provide a hands-on environment for web developers to explore,
+experiment and learn a wide range of identity and authentication features and
+patterns.
+
+## How to run locally
+
+### Prerequisites
+
+- [Node.js 24.7+](https://nodejs.org/)
+- [gcloud CLI](https://cloud.google.com/sdk/docs/install)
+- [Java JDK 21+](https://jdk.java.net/)
+
+### Install
+
+```shell
+npm ci
+```
+
+### Build
+
+```shell
+npm run build
+```
+
+### Run
+
+This command will run the emulator, RP and IdP projects, and Caddy proxy:
+
+```shell
+npm run dev:local
+```
+
+Caddy should proxy from https://rp.localhost to `localhost:8080` and https://idp.localhost to `localhost:8000`,
+or other ports that you specify in the `rp-localhost.config.json` and `idp-localhost.config.json` config files.
+
+> [!NOTE]
+> `sudo` is required to run the Caddy scripts. You may need to enter your password during the command.
+
+### Useful Chrome flags (optional)
+
+For local testing, you can configure Chrome to ignore warnings and errors related to certificates.
+
+- Launch Chrome with the `--ignore-certificate-errors` command line flag
+- Enable `chrome://flags/#unsafely-treat-insecure-origin-as-secure` and set its contents to:
+
+```text
+https://localhost,wss://localhost:3000,https://rp.localhost,wss://rp.localhost,wss://rp.localhost:3000,https://idp.localhost
+```
+
+### Run all verification checks
+
+Before submitting any code changes or raising a pull request, you should run the bundled quality checks task. This runs formatting checks, ESLint analysis, Vitest tests with coverage, and production builds:
+
+```shell
+npm run check
+```
+
+### Running Tests
+
+Unit and integration tests are powered by **Vitest**. The test suite automatically manages the Firestore emulator lifecycle so you do not need to boot it up manually:
+
+- Run tests once: `npm run test:run`
+- Run tests in watch mode for development: `npm run test`
+- Run tests with coverage summary: `npm run test:coverage`
+
+### Code Linting
+
+We use **ESLint** with modern Flat Configuration to perform static and security analysis:
+
+- Check for lint errors: `npm run lint`
+- Auto-fix simple issues: `npm run lint:fix`
+
+### Code Formatting
+
+We use **Prettier** to maintain consistent code layout and structure:
+
+- Check formatting status: `npm run format:check`
+- Auto-format code: `npm run format`
+
+## Adding a new sign-in flow
+
+You can use this code base to try and experiment with new ideas. To add a new
+sign-in flow, follow the instructions below.
+
+1. Determine the path. e.g. `/sign-in`
+2. Add a new HTML template under `src/shared/views`. e.g. `src/shared/views/sign-in.html`
+3. Add a TypeScript file under `src/client/pages`. e.g. `src/client/pages/sign-in.ts`.
+4. Layout template is `src/client/layout.html`. The partial templates are under `src/shared/views/partials`.
+5. Add a server behavior at `src/server/app.ts`. e.g.
+   ```ts
+   app.get(
+     '/sign-in',
+     pageAclCheck(PageType.SignIn),
+     (req: Request, res: Response) => {
+       res.render('sign-in.html', {
+         title: 'Sign In',
+       });
+     }
+   );
+   ```
+
+### Use `pageAclCheck` middleware for pages
+
+Unless this is a public page, use the `pageAclCheck` middleware to specify ACL.
+
+```ts
+export enum PageType {
+  NoAuth = 0, // No authentication is required
+  SignUp = 1, // This is a sign-up page
+  SigningUp = 2, // The user must be signing up
+  SignIn = 3, // This is a sign-in page
+  FirstCredential = 4, // The user has provided the username
+  Reauth = 5, // The user must be signed in and requires reauthentication
+  SignedIn = 6, // The user must be signed in
+  Sensitive = 7, // The user must be recently signed in
+}
+```
+
+The `pageAclCheck` middleware automatically redirects the user if they need to be signed in to access this page etc.
+
+### Use `apiAclCheck` middleware for APIs
+
+Unless this is a public API, use the `apiAclCheck` middleware to specify ACL.
+
+```ts
+export enum ApiType {
+  NoAuth = 0, // No authentication is required
+  PasskeyRegistration = 1, // The user is either signing-up, signed-in or upgrading
+  SigningUp = 2, // The user is in the middle of signing up
+  SignIn = 3, // The user is about to sign in with a username and a credential
+  FirstCredential = 4, // The user is about to sign in
+  SecondCredential = 5, // The user is about to sign in
+  SignedIn = 6, // The user must be signed in
+  Sensitive = 7, // The user must be recently signed in
+}
+```
+
+The `apiAclCheck` middleware automatically blocks requests with insuffcient privilege.
+
+### Start a session
+
+Start a session after the user successfully signed in.
+Create or use a middleware under `src/server/middlewares`.
+
+For example, if the you want to check a password at `/auth/sign-in`, create the
+endpoint in `src/server/middlewares/auth.ts`.
+
+```ts
+router.post(
+  '/sign-in',
+  apiAclCheck(ApiType.SignIn),
+  async (req: Request, res: Response) => {
+    const {username, password} = req.body;
+    // TODO: Validate entered parameter.
+    if (!Users.isValidUsername(username) || !Users.isValidPassword(password)) {
+      return res.status(401).json({error: 'Enter at least one random letter.'});
+    }
+
+    const user = await Users.validatePassword(username, password);
+    if (user) {
+      // Set the user as a signed in status
+      setSignedIn(user, req, res);
+
+      return res.json(user);
+    } else {
+      return res.status(401).json({error: 'Failed to sign in.'});
+    }
+  }
+);
+```
+
+## Account deletion and data cleanup
+
+Project Sesame implements a comprehensive cleanup strategy to ensure no orphaned personal data remains when an account is deleted or expired.
+
+### Cascading deletion
+
+When a user manually deletes their account (via `/auth/delete-user`), all associated data is deleted in cascade before the user document itself is removed:
+
+- **Passkeys (`PublicKeyCredentials`)**: All WebAuthn credentials tied to the user's `passkeyUserId`.
+- **Sessions**: All active sessions across all devices (`sessionStore.destroyAllByUserId`).
+- **Federation mappings (`FederationMappings`)**: Linked IdP/RP identity records.
+- **User profile (`Users`)**: Deleted last, ensuring that any failures midway allow the operation to be retried safely.
+
+### Automated eviction and cron cleanup
+
+To keep the demo environment clean and prevent unbounded data growth:
+
+- **Scheduled eviction**: App Engine Cron runs every 2 hours via `cron.yaml` calling `/admin/delete-all-users`.
+- **Expiration (`expiresAt`)**: Accounts past their expiration timestamp are evicted (allowlisted seed accounts have far-future expiration dates and are preserved).
+- **Orphan sweep**: Sweeps residual passkeys, sessions, or federation records whose parent user no longer exists, with a grace period for in-flight registrations.
+- **Endpoint security**: The eviction endpoint is protected by `cronCheck` middleware, ensuring requests in deployed environments (`prod`, `staging`, `idp`) must carry the unforgeable `X-Appengine-Cron: true` header.
