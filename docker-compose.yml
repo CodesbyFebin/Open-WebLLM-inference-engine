@@ -1,0 +1,17 @@
+services:
+  gateway:
+    build: ./api
+    environment:
+      API_KEY: ${API_KEY:?set API_KEY}
+      VLLM_URL: http://vllm:8000
+    ports: ['127.0.0.1:8080:8080']
+    depends_on: [vllm]
+  vllm:
+    image: vllm/vllm-openai:v0.11.2
+    command: ['--model', 'Qwen/Qwen2.5-7B-Instruct', '--enable-prefix-caching', '--block-size', '16', '--gpu-memory-utilization', '0.85', '--max-model-len', '8192']
+    ipc: host
+    gpus: all
+    volumes: ['hf-cache:/root/.cache/huggingface']
+    expose: ['8000']
+volumes:
+  hf-cache:

@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: vllm}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: vllm}
+  template:
+    metadata:
+      labels: {app: vllm}
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-l4
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:v0.11.2
+          args: ['--model', 'Qwen/Qwen2.5-7B-Instruct', '--enable-prefix-caching', '--block-size', '16', '--gpu-memory-utilization', '0.85', '--max-model-len', '8192']
+          ports: [{containerPort: 8000}]
+          resources:
+            requests: {cpu: '4', memory: 20Gi, nvidia.com/gpu: '1'}
+            limits: {cpu: '8', memory: 32Gi, nvidia.com/gpu: '1'}
+          startupProbe:
+            httpGet: {path: /health, port: 8000}
+            periodSeconds: 10
+            failureThreshold: 90
+          readinessProbe:
+            httpGet: {path: /health, port: 8000}
+            periodSeconds: 10
+          volumeMounts: [{name: hf-cache, mountPath: /root/.cache/huggingface}]
+      volumes:
+        - name: hf-cache
+          emptyDir: {sizeLimit: 30Gi}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: vllm}
+spec:
+  type: ClusterIP
+  selector: {app: vllm}
+  ports: [{port: 8000, targetPort: 8000}]
