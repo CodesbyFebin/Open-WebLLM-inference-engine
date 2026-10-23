@@ -100,7 +100,7 @@ jobs:
       - name: Apply migrations using privileged one-shot role
         run: python -m app.migrate
       - name: Run database-backed sessions, RBAC, RLS, quota, and audit gates
-        run: python -m pytest -q tests/test_postgres.py
+        run: python -m pytest -q tests/test_postgres.py tests/test_audit_privileges.py
       - name: Verify a disposable backup can be restored
         env:
           PGPASSWORD: postgres
