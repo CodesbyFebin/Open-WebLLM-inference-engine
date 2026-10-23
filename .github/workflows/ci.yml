@@ -13,10 +13,15 @@ jobs:
       HELLO_APP_PASSWORD: 2123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       HELLO_WORKER_PASSWORD: 3123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       AUTH_THROTTLE_PEPPER: 4123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      SITE_DOMAIN: example.invalid
     steps:
       - uses: actions/checkout@v4
       - name: Validate local stack configuration without starting inference
         run: docker compose config --quiet
+      - name: Validate optional HTTPS self-host deployment configuration
+        run: docker compose -f compose.deploy.yml config --quiet
+      - name: Build production web proxy image
+        run: docker build --tag open-web-llm-web:ci -f infra/deploy/Dockerfile.web .
       - name: Build the non-root API and worker image
         run: docker build --tag open-web-llm-api:ci ./api
       - name: Check the application image uses its unprivileged UID
