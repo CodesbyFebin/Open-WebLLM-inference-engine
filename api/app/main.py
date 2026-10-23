@@ -10,6 +10,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_
 from .routing import Backend, RouteOptions, decide
 from .registry import registry
 from .benchmarks import DEFAULT_CASES, configured_backends, measure, qualified, save_run
+from .nim import complete as nim_complete, readiness as nim_readiness
 
 VLLM_URL = os.getenv('VLLM_URL', 'http://vllm:8000').rstrip('/')
 VLLM_MODEL = os.getenv('VLLM_MODEL', 'Qwen/Qwen2.5-7B-Instruct')
@@ -39,6 +40,20 @@ def authorize(token):
 @app.get('/health')
 async def health():
     return {'status': 'ok', 'mode': 'gpu-proxy'}
+
+class NimRequest(BaseModel):
+    prompt: str = Field(min_length=1, max_length=2000)
+    max_tokens: int = Field(default=48, ge=1, le=48)
+
+@app.get('/api/nim/status')
+async def nim_status(authorization: str | None = Header(default=None)):
+    authorize(authorization)
+    return nim_readiness()
+
+@app.post('/api/nim/complete')
+async def nim_infer(req: NimRequest, authorization: str | None = Header(default=None)):
+    authorize(authorization)
+    return await nim_complete(app.state.http, req.prompt, req.max_tokens)
 
 @app.get('/api/models')
 async def models(authorization: str | None = Header(default=None)):
