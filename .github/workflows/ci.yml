@@ -21,6 +21,35 @@ jobs:
         run: docker build --tag open-web-llm-api:ci ./api
       - name: Check the application image uses its unprivileged UID
         run: test "$(docker run --rm open-web-llm-api:ci id -u)" = 65532
+  container-lifecycle:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - name: Validate isolated fixture stack
+        run: docker compose -f ../docker-compose.ci.yml config --quiet
+      - name: Start disposable PostgreSQL, migrations, fixture model, gateway, and worker
+        run: docker compose -f ../docker-compose.ci.yml up --detach --build postgres mock-model migrate gateway worker
+      - name: Seed disposable account and verify worker lifecycle end to end
+        env:
+          MIGRATION_DATABASE_URL: postgresql://hello_migrator:ci-migrator-password-not-a-secret-000000@127.0.0.1:55432/inference
+        run: |
+          python tests/seed_container_smoke.py
+          python tests/container_worker_smoke.py
+      - name: Collect container diagnostics on failure
+        if: failure()
+        run: docker compose -f ../docker-compose.ci.yml logs --no-color
+      - name: Stop disposable stack and delete its database volume
+        if: always()
+        run: docker compose -f ../docker-compose.ci.yml down --volumes --remove-orphans
   postgres-security:
     runs-on: ubuntu-latest
     services:
