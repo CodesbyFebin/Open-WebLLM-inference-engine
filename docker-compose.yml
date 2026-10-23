@@ -4,6 +4,9 @@ services:
     environment:
       API_KEY: ${API_KEY:?set API_KEY}
       VLLM_URL: http://vllm:8000
+      BENCHMARK_DB: /data/inference-benchmarks.sqlite3
+    volumes:
+      - benchmarks:/data
     ports: ['127.0.0.1:8080:8080']
     depends_on: [vllm]
   vllm:
@@ -15,3 +18,4 @@ services:
     expose: ['8000']
 volumes:
   hf-cache:
+  benchmarks:
