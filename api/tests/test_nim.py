@@ -1,4 +1,5 @@
 import os
+import asyncio
 import httpx
 import pytest
 from fastapi.testclient import TestClient
@@ -24,8 +25,10 @@ def test_authentication_and_request_validation():
         assert client.post("/api/nim/complete", headers=AUTH,
                            json={"prompt": "hi", "max_tokens": 49}).status_code == 422
 
-@pytest.mark.asyncio
-async def test_approved_bounded_request_and_exhaustion(monkeypatch):
+def test_approved_bounded_request_and_exhaustion(monkeypatch):
+    asyncio.run(_approved_bounded_request_and_exhaustion(monkeypatch))
+
+async def _approved_bounded_request_and_exhaustion(monkeypatch):
     monkeypatch.setenv("NIM_ENABLED", "true")
     monkeypatch.setenv("NIM_FREE_QUOTA_ACK", "I CONFIRM FREE ONLY")
     monkeypatch.setenv("NVIDIA_API_KEY", "test-key-not-real")
@@ -46,8 +49,10 @@ async def test_approved_bounded_request_and_exhaustion(monkeypatch):
         assert exc.value.status_code == 429
     monkeypatch.setattr(nim, "_request_count", 0)
 
-@pytest.mark.asyncio
-async def test_no_unbounded_retry_on_upstream_failure(monkeypatch):
+def test_no_unbounded_retry_on_upstream_failure(monkeypatch):
+    asyncio.run(_no_unbounded_retry_on_upstream_failure(monkeypatch))
+
+async def _no_unbounded_retry_on_upstream_failure(monkeypatch):
     monkeypatch.setenv("NIM_ENABLED", "true")
     monkeypatch.setenv("NIM_FREE_QUOTA_ACK", "I CONFIRM FREE ONLY")
     monkeypatch.setenv("NVIDIA_API_KEY", "test-key-not-real")
