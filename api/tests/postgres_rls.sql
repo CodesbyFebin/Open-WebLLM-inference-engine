@@ -41,3 +41,10 @@ BEGIN
  END IF;
 END $$;
 RESET ROLE;
+DO $
+BEGIN
+ IF has_table_privilege('openwebllm_app','control.audit_events','UPDATE') OR
+    has_table_privilege('openwebllm_app','control.audit_events','DELETE') THEN
+   RAISE EXCEPTION 'Runtime role can mutate audit history';
+ END IF;
+END $;
