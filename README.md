@@ -143,7 +143,7 @@ GitHub Actions also runs a disposable PostgreSQL 16 security job with separate m
 
 ## Container packages and version tags
 
-Pushing a version tag such as `v0.1.0` runs the container publication workflow. It builds and publishes the API/worker image and static web image to GitHub Container Registry (GHCR), tagged with the version and commit SHA. Stable version tags receive the `latest` alias; prerelease tags should be pulled by their explicit version. These are installable software artifacts; their publication does not mean hardware or production deployment gates have passed.
+Pushing a version tag such as `v0.1.0` runs the container publication workflow. It builds and publishes the API/worker image and static web image to GitHub Container Registry (GHCR), tagged with the version and commit SHA. Future stable version tags receive the `latest` alias; prerelease packages should be pulled by their explicit version. Until a stable package is published, `latest` still resolves to this preview. These are installable software artifacts; their publication does not mean hardware or production deployment gates have passed.
 
 ```bash
 docker pull ghcr.io/codesbyfebin/open-webgpu-inference-engine-api:v0.1.0-preview.1
