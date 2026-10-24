@@ -33,6 +33,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/open-webgpu-inference-engine-api
+          flavor: latest=false
           tags: |
             type=ref,event=tag
             type=sha,prefix=sha-
