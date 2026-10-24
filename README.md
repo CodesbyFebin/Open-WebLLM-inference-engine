@@ -2,6 +2,12 @@
 
 **CodesbyFebin · Open inference infrastructure for browser, edge, and GPU.**
 
+[![CI](https://github.com/CodesbyFebin/Open-WebLLM-inference-engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/CodesbyFebin/Open-WebLLM-inference-engine/actions/workflows/ci.yml)
+[![PostgreSQL qualification](https://github.com/CodesbyFebin/Open-WebLLM-inference-engine/actions/workflows/postgres-qualification.yml/badge.svg?branch=main)](https://github.com/CodesbyFebin/Open-WebLLM-inference-engine/actions/workflows/postgres-qualification.yml)
+[![NVIDIA NIM qualification](https://github.com/CodesbyFebin/Open-WebLLM-inference-engine/actions/workflows/nvidia-nim-qualification.yml/badge.svg?branch=main)](https://github.com/CodesbyFebin/Open-WebLLM-inference-engine/actions/workflows/nvidia-nim-qualification.yml)
+
+> **Verification status:** automated CI verifies the API, browser build, PostgreSQL security and recovery fixtures, and container worker lifecycle. A bounded NVIDIA NIM free-tier smoke run has passed. This is not a claim of full production verification: physical-device inference, production deployment operations, and independent security assessment are still pending. See the [evidence register](docs/PRODUCTION-GATES.md).
+
 This repository begins with a working-source foundation: React/TypeScript WebGPU inference console, FastAPI gateway, authenticated routing and vLLM deployment manifests. Runtime integrations have individually declared states, and unfinished adapters are not advertised as runnable.
 
 ## Studied techniques
@@ -134,3 +140,22 @@ GitHub Actions also runs a disposable PostgreSQL 16 security job with separate m
 - Kubernetes autoscaling, private tunnel management, GPU warm-up jobs and production-grade request limits remain to be implemented.
 - vLLM metric names may vary by release; pin and verify against the running container.
 - No GPU infrastructure has been provisioned or tested in this workspace.
+
+## Container packages and version tags
+
+Pushing a version tag such as `v0.1.0` runs the container publication workflow. It builds and publishes the API/worker image and static web image to GitHub Container Registry (GHCR), tagged with the version and commit SHA. These are installable software artifacts; their publication does not mean hardware or production deployment gates have passed.
+
+```bash
+docker pull ghcr.io/codesbyfebin/open-webgpu-inference-engine-api:v0.1.0
+docker pull ghcr.io/codesbyfebin/open-webgpu-inference-engine-web:v0.1.0
+```
+
+The API/worker image can be used with the Compose deployment after reviewing its configuration. The web image serves the static console and expects a separately configured gateway/reverse proxy. See [self-host deployment](docs/SELFHOST-DEPLOY.md) and [release workflow](.github/workflows/publish-packages.yml). No package is published from untagged commits.
+
+## Contributing
+
+Bug reports, documentation improvements, tests, and runtime integrations are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, test commands, security expectations, and pull request guidance. Before proposing a runtime as supported, include repeatable evidence from the actual target runtime and update the [support matrix](#runtime-support-matrix) and [production-gate register](docs/PRODUCTION-GATES.md).
+
+## License
+
+This repository is licensed under the [MIT License](LICENSE). Third-party dependencies and referenced upstream projects remain under their own licenses.
